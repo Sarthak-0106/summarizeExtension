@@ -1,8 +1,19 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
 
 app = FastAPI()
+
+# ✅ Add CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 @app.post("/summarize")
