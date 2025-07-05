@@ -38,5 +38,10 @@ async def summarize(request: Request):
     async with httpx.AsyncClient() as client:
         response = await client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
         result = response.json()
+        print("Groq API Response:", result)
+
+        if 'choices' not in result:
+            return {"summary": "Error: No summary returned. Response: " + str(result)}
+
         summary = result['choices'][0]['message']['content']
         return {"summary": summary}
