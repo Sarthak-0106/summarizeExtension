@@ -47,7 +47,7 @@ async def summarize(request: Request):
         parts = content.split(split_key)
 
         summary_text = parts[0].strip()
-        appendix_text = (split_key + parts[1].strip()) if len(parts) > 1 else ""
+        appendix_text = (split_key + " " + parts[1].strip()) if len(parts) > 1 else ""
 
         return {
             "summary": summary_text,

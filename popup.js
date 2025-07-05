@@ -27,8 +27,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
 
             resultDiv.innerText = summary || 'No summary.';
             if (appendix) {
-              const items = appendix.split('\n').filter(line => line.trim() !== '');
-              appendixDiv.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+                appendixDiv.innerText = appendix.trim();
             }
 
           } catch (err) {
