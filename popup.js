@@ -1,3 +1,7 @@
+const resultDiv = document.getElementById('result');
+const appendixDiv = document.getElementById('appendix');
+const loadingDiv = document.getElementById('loading');  // if you added spinner
+
 document.getElementById('summarizeBtn').addEventListener('click', () => {
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
     const tabId = tabs[0].id;
@@ -7,32 +11,34 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
       files: ['content.js']
     }, () => {
       chrome.tabs.sendMessage(tabId, { action: "extractText" }, async function(response) {
-        const resultDiv = document.getElementById('result');
-        const appendixDiv = document.getElementById('appendix');
-        resultDiv.innerText = 'Summarizing...';
+        resultDiv.innerText = '';
         appendixDiv.innerHTML = '';
+        if (loadingDiv) loadingDiv.style.display = 'block';  // 🔥 show spinner
 
         if (chrome.runtime.lastError) {
           resultDiv.innerText = 'Error: ' + chrome.runtime.lastError.message;
+          if (loadingDiv) loadingDiv.style.display = 'none';
           return;
         }
 
         if (response && response.content) {
           try {
-            const fullSummary = await summarizeText(response.content);
-            const [summaryPart, appendixPart] = fullSummary.split('Appendix:');
+            const { summary, appendix } = await summarizeText(response.content);
 
-            resultDiv.innerText = summaryPart ? summaryPart.trim() : 'No summary.';
-            
-            if (appendixPart) {
-              const items = appendixPart.trim().split('\n');
+            resultDiv.innerText = summary || 'No summary.';
+            if (appendix) {
+              const items = appendix.split('\n').filter(line => line.trim() !== '');
               appendixDiv.innerHTML = items.map(item => `<li>${item}</li>`).join('');
             }
+
           } catch (err) {
             resultDiv.innerText = 'Error fetching summary.';
+          } finally {
+            if (loadingDiv) loadingDiv.style.display = 'none';  // ✅ hide spinner
           }
         } else {
           resultDiv.innerText = 'No content found.';
+          if (loadingDiv) loadingDiv.style.display = 'none';
         }
       });
     });
@@ -53,43 +59,9 @@ async function summarizeText(text) {
   };
 }
 
-document.getElementById('summarizeBtn').addEventListener('click', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-    const tabId = tabs[0].id;
-
-    chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      files: ['content.js']
-    }, () => {
-      chrome.tabs.sendMessage(tabId, { action: "extractText" }, async function(response) {
-        const resultDiv = document.getElementById('result');
-        const appendixDiv = document.getElementById('appendix');
-        resultDiv.innerText = 'Summarizing...';
-        appendixDiv.innerHTML = '';
-
-        if (chrome.runtime.lastError) {
-          resultDiv.innerText = 'Error: ' + chrome.runtime.lastError.message;
-          return;
-        }
-
-        if (response && response.content) {
-          try {
-            const { summary, appendix } = await summarizeText(response.content);
-
-            resultDiv.innerText = summary;
-
-            if (appendix) {
-              const items = appendix.split('\n').filter(line => line.trim() !== '');
-              appendixDiv.innerHTML = items.map(item => `<li>${item}</li>`).join('');
-            }
-
-          } catch (err) {
-            resultDiv.innerText = 'Error fetching summary.';
-          }
-        } else {
-          resultDiv.innerText = 'No content found.';
-        }
-      });
-    });
+document.getElementById('copySummaryBtn').addEventListener('click', () => {
+  const text = resultDiv.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Summary copied to clipboard!');
   });
 });
