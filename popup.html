@@ -66,6 +66,7 @@
   </head>
   <body>
     <h2>Page Summarizer</h2>
+
     <div class="section">
       <strong>Or Paste Your Text:</strong>
       <textarea
@@ -78,6 +79,7 @@
         Summarize This Text
       </button>
     </div>
+
     <button id="summarizeBtn">Summarize This Page</button>
 
     <div id="loading" style="display: none">
@@ -93,9 +95,9 @@
 
     <div class="section">
       <strong>Appendix:</strong>
-      <div id="appendix"></div>
+      <div id="appendix">No appendix yet.</div>
+      <button id="copyAppendixBtn" class="copy-btn">Copy Appendix</button>
     </div>
-
     <script src="popup.js"></script>
   </body>
 </html>
