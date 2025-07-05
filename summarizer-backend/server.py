@@ -5,7 +5,7 @@ import os
 
 app = FastAPI()
 
-# ✅ Add CORS
+# ✅ Enable CORS for all origins (good for development, tighten for production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,36 +19,82 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 @app.post("/summarize")
 async def summarize(request: Request):
     data = await request.json()
-    text = data.get("text", "")[:4000]  # Limit
+    text = data.get("text", "").strip()[:4000]  # Limit to avoid token overflow
 
-    prompt = f"""Summarize this text in 5-6 sentences. Then extract 5 key terms from the text and define each in 1 line.\n\n{text}"""
+    if not text:
+        return {"summary": "No input provided.", "appendix": ""}
+
+    word_count = len(text.split())
+    
+    # 1️⃣ Short text → single term explanation
+    if word_count <= 3:
+        prompt = f"""
+            You are a helpful study assistant. Provide a **clear, beginner-friendly explanation** of the following term or phrase in 4-5 lines:
+
+            Term: {text}
+            """
+        max_tokens = 400
+    else:
+        # 2️⃣ Longer text → summary + appendix
+        prompt = f"""
+            You are a helpful study assistant.
+
+            1️⃣ Summarize the following text in 5-6 concise sentences.
+            2️⃣ Extract up to 5 important keywords or terms from the text.
+            3️⃣ For each keyword, provide a one-line definition.
+
+            Text:
+            \"\"\"
+            {text}
+            \"\"\"
+
+            Please format your response exactly as:
+
+            Summary:
+            <summary here>
+
+            Appendix:
+            1. Term: Definition
+            2. Term: Definition
+            3. Term: Definition
+            4. Term: Definition
+            5. Term: Definition
+            """
+        max_tokens = 700
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
+
     payload = {
         "model": "llama3-8b-8192",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 600
+        "max_tokens": max_tokens
     }
 
     async with httpx.AsyncClient() as client:
-        response = await client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+        response = await client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload
+        )
+
         result = response.json()
 
-        if 'choices' not in result:
+        if 'choices' not in result or not result['choices']:
             return {"summary": "Error: No summary returned.", "appendix": "", "raw": result}
 
-        content = result['choices'][0]['message']['content']
+        content = result['choices'][0]['message']['content'].strip()
 
-        # Smarter split: Look for the phrase the model actually uses
-        split_keys = ["Here are 5 key terms", "And here are 5 key terms from the text"]
-        split_key = next((k for k in split_keys if k in content), split_keys[0])
-        parts = content.split(split_key)
-
-        summary_text = parts[0].strip()
-        appendix_text = (split_key + " " + parts[1].strip()) if len(parts) > 1 else ""
+        # 📝 Smarter splitting based on headings
+        if "Appendix:" in content:
+            parts = content.split("Appendix:")
+            summary_text = parts[0].replace("Summary:", "").strip()
+            appendix_text = "Appendix:\n" + parts[1].strip()
+        else:
+            summary_text = content
+            appendix_text = ""
 
         return {
             "summary": summary_text,
