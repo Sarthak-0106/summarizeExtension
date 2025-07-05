@@ -1,6 +1,6 @@
 const resultDiv = document.getElementById('result');
 const appendixDiv = document.getElementById('appendix');
-const loadingDiv = document.getElementById('loading');  // if you added spinner
+const loadingDiv = document.getElementById('loading');
 
 document.getElementById('summarizeBtn').addEventListener('click', () => {
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
@@ -13,7 +13,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
       chrome.tabs.sendMessage(tabId, { action: "extractText" }, async function(response) {
         resultDiv.innerText = '';
         appendixDiv.innerHTML = '';
-        if (loadingDiv) loadingDiv.style.display = 'block';  // 🔥 show spinner
+        if (loadingDiv) loadingDiv.style.display = 'block';
 
         if (chrome.runtime.lastError) {
           resultDiv.innerText = 'Error: ' + chrome.runtime.lastError.message;
@@ -23,7 +23,14 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
 
         if (response && response.content) {
           try {
-            const { summary, appendix } = await summarizeText(response.content);
+            let cleanText = response.content.trim();                          
+            cleanText = cleanText.replace(/\n{3,}/g, '\n\n');                 
+            cleanText = cleanText.replace(/\s{2,}/g, ' ');                    
+            cleanText = cleanText.slice(0, 4000);
+
+            console.log("🔍 Clean Text Being Sent:", cleanText);
+
+            const { summary, appendix } = await summarizeText(cleanText);
 
             resultDiv.innerText = summary || 'No summary.';
             if (appendix) {
@@ -63,4 +70,32 @@ document.getElementById('copySummaryBtn').addEventListener('click', () => {
   navigator.clipboard.writeText(text).then(() => {
     alert('Summary copied to clipboard!');
   });
+});
+
+document.getElementById('summarizeInputBtn').addEventListener('click', async () => {
+  const userInput = document.getElementById('userInput').value.trim();
+  resultDiv.innerText = '';
+  appendixDiv.innerHTML = '';
+  loadingDiv.style.display = 'block';
+
+  if (!userInput) {
+    resultDiv.innerText = 'Please enter some text.';
+    loadingDiv.style.display = 'none';
+    return;
+  }
+
+  try {
+    let cleanText = userInput.replace(/\n{3,}/g, '\n\n').replace(/\s{2,}/g, ' ').slice(0, 4000);
+    console.log("🔍 Clean Text (Manual Input):", cleanText);
+
+    const { summary, appendix } = await summarizeText(cleanText);
+
+    resultDiv.innerText = summary || 'No summary.';
+    appendixDiv.innerText = appendix ? appendix.trim() : '';
+
+  } catch (err) {
+    resultDiv.innerText = 'Error fetching summary.';
+  } finally {
+    loadingDiv.style.display = 'none';
+  }
 });

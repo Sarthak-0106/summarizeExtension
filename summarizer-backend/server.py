@@ -43,7 +43,8 @@ async def summarize(request: Request):
         content = result['choices'][0]['message']['content']
 
         # Smarter split: Look for the phrase the model actually uses
-        split_key = "Here are 5 key terms"
+        split_keys = ["Here are 5 key terms", "And here are 5 key terms from the text"]
+        split_key = next((k for k in split_keys if k in content), split_keys[0])
         parts = content.split(split_key)
 
         summary_text = parts[0].strip()
