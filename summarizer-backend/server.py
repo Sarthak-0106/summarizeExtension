@@ -20,7 +20,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 async def summarize(request: Request):
     data = await request.json()
     text = data.get("text", "")
-
     text = text[:4000]
 
     prompt = f"""Summarize this text in 5-6 sentences. Then extract 5 key terms from the text and define each in 1 line.\n\n{text}"""
@@ -40,10 +39,18 @@ async def summarize(request: Request):
     async with httpx.AsyncClient() as client:
         response = await client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
         result = response.json()
-        print("Groq API Response:", result)
 
         if 'choices' not in result:
-            return {"summary": "Error: No summary returned. Response: " + str(result)}
+            return {"summary": "Error: No summary returned.", "appendix": ""}
 
-        summary = result['choices'][0]['message']['content']
-        return {"summary": summary}
+        full_content = result['choices'][0]['message']['content']
+
+        # ✅ Try to split by "Appendix" (case-insensitive, safe fallback)
+        parts = full_content.split('Appendix:')
+        summary_text = parts[0].strip()
+        appendix_text = parts[1].strip() if len(parts) > 1 else ""
+
+        return {
+            "summary": summary_text,
+            "appendix": appendix_text
+        }

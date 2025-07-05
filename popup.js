@@ -47,13 +47,49 @@ async function summarizeText(text) {
   });
 
   const data = await response.json();
-  return data.summary || "No summary.";
+  return {
+    summary: data.summary || "No summary.",
+    appendix: data.appendix || ""
+  };
 }
 
-// Copy button functionality
-document.getElementById('copySummaryBtn').addEventListener('click', () => {
-  const text = document.getElementById('result').innerText;
-  navigator.clipboard.writeText(text).then(() => {
-    alert('Summary copied to clipboard!');
+document.getElementById('summarizeBtn').addEventListener('click', () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+    const tabId = tabs[0].id;
+
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['content.js']
+    }, () => {
+      chrome.tabs.sendMessage(tabId, { action: "extractText" }, async function(response) {
+        const resultDiv = document.getElementById('result');
+        const appendixDiv = document.getElementById('appendix');
+        resultDiv.innerText = 'Summarizing...';
+        appendixDiv.innerHTML = '';
+
+        if (chrome.runtime.lastError) {
+          resultDiv.innerText = 'Error: ' + chrome.runtime.lastError.message;
+          return;
+        }
+
+        if (response && response.content) {
+          try {
+            const { summary, appendix } = await summarizeText(response.content);
+
+            resultDiv.innerText = summary;
+
+            if (appendix) {
+              const items = appendix.split('\n').filter(line => line.trim() !== '');
+              appendixDiv.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+            }
+
+          } catch (err) {
+            resultDiv.innerText = 'Error fetching summary.';
+          }
+        } else {
+          resultDiv.innerText = 'No content found.';
+        }
+      });
+    });
   });
 });
