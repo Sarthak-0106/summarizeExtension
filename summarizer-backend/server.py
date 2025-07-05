@@ -21,6 +21,8 @@ async def summarize(request: Request):
     data = await request.json()
     text = data.get("text", "")
 
+    text = text[:4000]
+
     prompt = f"""Summarize this text in 5-6 sentences. Then extract 5 key terms from the text and define each in 1 line.\n\n{text}"""
 
     headers = {
