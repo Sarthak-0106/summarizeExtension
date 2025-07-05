@@ -8,13 +8,26 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
       files: ['content.js']
     }, () => {
       // Now send the message to the injected content script
-      chrome.tabs.sendMessage(tabId, { action: "extractText" }, function(response) {
+      chrome.tabs.sendMessage(tabId, { action: "extractText" }, async function(response) {
+        const resultDiv = document.getElementById('result');
+
         if (chrome.runtime.lastError) {
-          document.getElementById('result').innerText = 'Error: ' + chrome.runtime.lastError.message;
-        } else if (response && response.content) {
-          document.getElementById('result').innerText = response.content; 
+          resultDiv.innerText = 'Error: ' + chrome.runtime.lastError.message;
+          return;
+        }
+
+        if (response && response.content) {
+          resultDiv.innerText = 'Summarizing...';
+
+          try {
+            const summary = await summarizeText(response.content);
+            resultDiv.innerText = summary;
+          } catch (err) {
+            resultDiv.innerText = 'Error fetching summary.';
+          }
+
         } else {
-          document.getElementById('result').innerText = 'No content found.';
+          resultDiv.innerText = 'No content found.';
         }
       });
     });
@@ -22,7 +35,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
 });
 
 async function summarizeText(text) {
-  const response = await fetch("https://your-render-app.onrender.com/summarize", {  // Replace this with your real Render URL
+  const response = await fetch("https://summarizeextension.onrender.com/summarize", {   // 🛠 Corrected URL
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: text })

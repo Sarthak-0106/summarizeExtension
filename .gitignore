@@ -1,2 +1,3 @@
 .env
 summarizer-backend/venv
+summarizer-backend/__pycache__
