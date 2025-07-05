@@ -40,6 +40,8 @@ async def summarize(request: Request):
         response = await client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
         result = response.json()
 
+        print("DEBUG: Groq raw response:", result)
+
         if 'choices' not in result:
             return {"summary": "Error: No summary returned.", "appendix": ""}
 
